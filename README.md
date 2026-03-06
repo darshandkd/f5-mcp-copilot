@@ -66,25 +66,38 @@ python -m venv .venv
 pip install -r requirements.txt python-dotenv
 ```
 
-### 3. Configure
+### 3a. Non-secret config (`.env`)
 
 Edit `.env` (created automatically from `.env.example`):
 
 ```env
-# F5 Device (seeds initial device on startup)
-F5_HOST=10.1.1.100            # Your F5 management IP
+F5_HOST=10.1.1.100            # F5 management IP
 F5_USER=admin                  # SSH username
-F5_SSH_KEY=~/.ssh/f5_key       # SSH key path (use this OR password)
-# F5_PASSWORD=your-password    # Uncomment for password auth
+F5_SSH_KEY=~/.ssh/f5_key       # SSH key path (safe — it's a file path, not a secret)
 F5_PORT=22
-
-# Server
-MCP_HOST=0.0.0.0               # Bind address
+MCP_HOST=0.0.0.0               # Server bind address
 MCP_PORT=8080                   # Server port
-MCP_API_KEY=your-secret-key     # Protects the /mcp endpoint
 ```
 
-> Pick **one** auth method: `F5_SSH_KEY` or `F5_PASSWORD`. If both are set, SSH key takes priority.
+> **SSH key auth** is configured here — key file paths are not secrets. If both `F5_SSH_KEY` and `F5_PASSWORD` are set, SSH key takes priority.
+
+### 3b. Secrets (environment variables only)
+
+`F5_PASSWORD`, `MCP_API_KEY`, and `F5_DEVICE_*_PASSWORD` are **blocked from `.env`** — the server strips them at startup and logs an error. Use environment variables:
+
+```bash
+# Inline
+MCP_API_KEY=your-key F5_PASSWORD=your-pass ./run_server.sh
+
+# Export
+export MCP_API_KEY=your-key && ./run_server.sh
+
+# macOS Keychain
+MCP_API_KEY=$(security find-generic-password -s f5-mcp-api-key -w) ./run_server.sh
+
+# Interactive — run_server.sh prompts for MCP_API_KEY if not set
+./run_server.sh
+```
 
 ### 4. Start the server
 
@@ -251,15 +264,14 @@ Or use the tools directly:
 | Switch default | `f5_set_default(name='lab')` |
 | Remove | `f5_remove_device(name='lab')` |
 
-### In `.env` file (supports both SSH key and password)
+### In `.env` file and environment variables
 
-Add named devices using the `F5_DEVICE_{NAME}_{FIELD}` pattern, then restart the server:
+Add named devices using the `F5_DEVICE_{NAME}_{FIELD}` pattern in `.env` (non-secret fields), then restart the server:
 
 ```env
-# Production (password auth)
+# Production
 F5_DEVICE_PROD_HOST=10.1.1.200
 F5_DEVICE_PROD_USER=admin
-F5_DEVICE_PROD_PASSWORD=your-password
 
 # Lab (SSH key auth)
 F5_DEVICE_LAB_HOST=192.168.1.50
@@ -267,9 +279,15 @@ F5_DEVICE_LAB_USER=root
 F5_DEVICE_LAB_SSH_KEY=~/.ssh/lab_key
 ```
 
+Set device passwords via environment variables:
+
+```bash
+F5_DEVICE_PROD_PASSWORD=your-password ./run_server.sh
+```
+
 All named devices load automatically alongside the default device on startup.
 
-> **Why passwords go in `.env`:** Anything typed in chat is visible on screen and sent to your AI provider. SSH key *paths* are safe to type (they're just file locations), but passwords are secrets — so those go in `.env` only.
+> **Why passwords go in environment variables:** Anything typed in chat is visible on screen and sent to your AI provider. Passwords in `.env` are at risk from backup tools and file sync. SSH key *paths* are safe (they're just file locations), but passwords are secrets — inject them via env vars.
 
 ---
 
@@ -352,10 +370,11 @@ Install `sshpass` (see Prerequisites) or switch to SSH key authentication.
 | What | How |
 |---|---|
 | **SSH keys** | Add via chat (`ssh_key='~/.ssh/key'`) or `.env` — file paths are not secrets |
-| **Passwords** | `.env` file only — never type in chat (they'd be sent to the AI provider) |
-| **API key** | Set `MCP_API_KEY` in `.env` — protects the `/mcp` endpoint |
+| **Passwords** | Environment variables only (`F5_PASSWORD=xxx ./run_server.sh`) — never in `.env` or chat |
+| **API key** | Environment variable only (`MCP_API_KEY=xxx ./run_server.sh`) — protects the `/mcp` endpoint |
+| **`.env` file** | Non-secret config only (host, port, user, key path). Gitignored as an extra safeguard |
+| **Secret enforcement** | Server blocks secrets in `.env` at startup — only environment variables accepted |
 | **Credentials** | Stored in memory only — never written to disk by the server |
-| **`.env` file** | Gitignored — your secrets won't be committed |
 | **Network** | Binds to `0.0.0.0` by default — use `MCP_HOST=127.0.0.1` for local-only access |
 | **Security Guardrails** | Server-side validation blocks command injection, credential theft, lateral movement, privilege escalation, and data exfiltration before commands reach the device |
 

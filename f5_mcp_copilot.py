@@ -42,7 +42,47 @@ log = logging.getLogger("f5-mcp")
 # Load environment
 # =============================================================================
 
-load_dotenv(Path(__file__).parent / ".env")
+# Secrets must come from real environment variables, never from .env.
+# Snapshot secret env vars before load_dotenv so we can strip any that .env injects.
+_SECRET_KEYS = frozenset({"F5_PASSWORD", "MCP_API_KEY"})
+_dotenv_path = Path(__file__).parent / ".env"
+
+# Also collect F5_DEVICE_*_PASSWORD keys from .env before loading
+if _dotenv_path.is_file():
+    try:
+        for _line in _dotenv_path.read_text().splitlines():
+            _stripped = _line.strip()
+            if _stripped.startswith("#") or "=" not in _stripped:
+                continue
+            _var = _stripped.split("=", 1)[0].strip()
+            if _var.startswith("F5_DEVICE_") and _var.endswith("_PASSWORD"):
+                _SECRET_KEYS = _SECRET_KEYS | {_var}
+    except OSError:
+        pass
+
+_pre_dotenv_secrets = {k: os.environ.get(k) for k in _SECRET_KEYS}
+
+load_dotenv(_dotenv_path)
+
+# Strip any secrets that were injected by .env (not present in real environment)
+for _key, _prior in _pre_dotenv_secrets.items():
+    _current = os.environ.get(_key)
+    if _current is not None and _prior is None:
+        # This value came from .env — remove it
+        del os.environ[_key]
+        logging.getLogger("f5-mcp").error(
+            "BLOCKED: %s found in .env — secrets must be set via environment "
+            "variables, not stored on disk. See README.md for secure options.",
+            _key,
+        )
+    elif _current is not None and _prior != _current:
+        # .env overwrote a real env var — restore the original
+        os.environ[_key] = _prior
+        logging.getLogger("f5-mcp").error(
+            "BLOCKED: %s in .env tried to override environment variable — "
+            "keeping the environment variable value.",
+            _key,
+        )
 
 # =============================================================================
 # Configuration
@@ -120,6 +160,7 @@ def _seed_from_env():
 
 
 _seed_from_env()
+
 
 
 def _validate_ssh_key(path: str) -> str:

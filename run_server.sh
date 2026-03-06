@@ -15,11 +15,22 @@ if [ ! -d "$VENV_DIR" ]; then
     "$SCRIPT_DIR/setup.sh"
 fi
 
-# Source .env if present
+# Source .env if present (non-secret config only)
 if [ -f "$SCRIPT_DIR/.env" ]; then
     set -a
     source "$SCRIPT_DIR/.env"
     set +a
+fi
+
+# Prompt for MCP_API_KEY if not set via environment
+# Secure usage: MCP_API_KEY=xxx ./run_server.sh
+# Or: export MCP_API_KEY=xxx
+if [ -z "$MCP_API_KEY" ]; then
+    read -s -p "Enter MCP API Key (or press Enter to skip): " MCP_API_KEY
+    echo
+    if [ -n "$MCP_API_KEY" ]; then
+        export MCP_API_KEY
+    fi
 fi
 
 # Create logs directory
