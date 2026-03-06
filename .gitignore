@@ -1,0 +1,41 @@
+# Credentials and environment
+.env
+.env.local
+.env.*.local
+
+# Device configuration (auto-generated, may contain credentials)
+config.json
+
+# F5 configuration exports (contain internal IPs and infrastructure details)
+bigip.conf
+*.ucs
+*.scf
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+*.egg-info/
+
+# SSH keys and certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Logs
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

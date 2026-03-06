@@ -1,0 +1,19 @@
+{
+  "servers": {
+    "f5-mcp-copilot": {
+      "type": "http",
+      "url": "http://localhost:8080/mcp",
+      "headers": {
+        "x-api-key": "${input:f5-api-key}"
+      }
+    }
+  },
+  "inputs": [
+    {
+      "id": "f5-api-key",
+      "type": "promptString",
+      "description": "API key for F5 MCP server",
+      "password": true
+    }
+  ]
+}

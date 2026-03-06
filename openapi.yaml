@@ -1,0 +1,56 @@
+openapi: "2.0"
+info:
+  title: F5 BIG-IP MCP Server
+  description: F5 BIG-IP management via Model Context Protocol (MCP) over Streamable HTTP
+  version: "1.0.0"
+host: "localhost:8080"
+basePath: "/"
+schemes:
+  - https
+  - http
+securityDefinitions:
+  apiKey:
+    type: apiKey
+    name: x-api-key
+    in: header
+security:
+  - apiKey: []
+paths:
+  /mcp:
+    post:
+      operationId: mcpEndpoint
+      summary: MCP Streamable HTTP endpoint
+      description: |
+        JSON-RPC 2.0 endpoint for Model Context Protocol.
+        Supports methods: initialize, tools/list, tools/call, ping.
+      parameters:
+        - in: header
+          name: x-ms-agentic-protocol
+          type: string
+          default: mcp-streamable-1.0
+          description: Agentic protocol identifier for Copilot Studio
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              jsonrpc:
+                type: string
+                enum: ["2.0"]
+              method:
+                type: string
+                description: "MCP method (initialize, tools/list, tools/call)"
+              id:
+                type: integer
+              params:
+                type: object
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: JSON-RPC response
+          schema:
+            type: object
+        "401":
+          description: Unauthorized - missing or invalid API key
